@@ -47,6 +47,9 @@ jobs:
       - name: Install brotli (for .unityweb decompression)
         run: sudo apt-get update && sudo apt-get install -y brotli
 
+      - name: Fix build folder permissions (Unity Docker runs as root)
+        run: sudo chown -R "$USER:$USER" build/
+
       - name: Normalize and decompress WebGL for itch.io
         run: |
           chmod +x scripts/fix-webgl-build.sh
