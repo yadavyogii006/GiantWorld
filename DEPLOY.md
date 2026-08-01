@@ -216,12 +216,58 @@ Download the new zip → re-upload on itch.io (replace old file).
 
 ## Troubleshooting
 
+### Build fails: "Failed to login" (HTTP 401) or "Failed to activate ULF license"
+
+Two separate problems — fix **both**:
+
+#### Fix 1 — Wrong email or password (401 error)
+
+```
+UnityConnectLoginRequest: Failed to login - please check your username or password
+```
+
+1. Go to [https://id.unity.com](https://id.unity.com) and sign in
+2. If you use **Google/Apple sign-in**, set a Unity password:
+   - **My Account → Security → Password**
+3. Test login with email + password (not Google button)
+4. Update GitHub secrets — re-type carefully, **no extra spaces**:
+   - `UNITY_EMAIL`
+   - `UNITY_PASSWORD`
+
+#### Fix 2 — Use serial instead of ULF file (recommended for CI)
+
+The `.ulf` file is tied to the Docker machine that created the `.alf`. GitHub's build runner uses a **different** machine, so ULF activation often fails in CI.
+
+**Switch to serial-based activation:**
+
+1. On your Mac, extract the serial from your downloaded `.ulf`:
+
+```bash
+grep DeveloperData ~/Downloads/Unity_v2022.3.50f1.ulf | sed -E 's/.*Value="([^"]+)".*/\1/' | base64 --decode
+```
+
+Or use the project script:
+
+```bash
+chmod +x scripts/extract-unity-serial.sh
+./scripts/extract-unity-serial.sh ~/Downloads/Unity_v2022.3.50f1.ulf
+```
+
+2. Output looks like: `XX-XXXX-XXXX-XXXX-XXXX-XXXX`
+
+3. GitHub → **Settings → Secrets**:
+   - **Add** `UNITY_SERIAL` = the serial from step 1
+   - **Delete** `UNITY_LICENSE` secret (important — ULF causes conflicts)
+   - Keep `UNITY_EMAIL` and `UNITY_PASSWORD`
+
+4. Re-run **Build WebGL**
+
+---
+
 ### Build fails: "License activation failed" or "strategy could not be determined"
 
-- Ensure all 3 secrets exist: `UNITY_EMAIL`, `UNITY_PASSWORD`, `UNITY_LICENSE`
-- `UNITY_LICENSE` = **raw text** from `.ulf` file (TextEdit → Select All → Copy). NOT base64
-- Add email/password secrets **before** running Unity License Setup workflow
-- Easiest fix: install **Unity Hub only** (no Editor) → get `.ulf` → paste into `UNITY_LICENSE` secret
+- Ensure secrets exist: `UNITY_EMAIL`, `UNITY_PASSWORD`, and **`UNITY_SERIAL`** (preferred) OR `UNITY_LICENSE`
+- For CI, **UNITY_SERIAL works better** than UNITY_LICENSE — see Fix 2 above
 - Re-get license via Unity Hub if builds fail after months (licenses can expire)
 
 ### Build fails: "Insufficient disk space"

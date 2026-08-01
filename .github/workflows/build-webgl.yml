@@ -34,10 +34,11 @@ jobs:
       - name: Build WebGL
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          # Prefer UNITY_SERIAL (extract from .ulf) over UNITY_LICENSE for CI — see DEPLOY.md
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           unityVersion: 2022.3.50f1
           targetPlatform: WebGL
