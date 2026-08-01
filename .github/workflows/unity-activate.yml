@@ -30,13 +30,19 @@ jobs:
       - name: Create manual activation file
         run: |
           mkdir -p activation
+          # --entrypoint bypasses game-ci entrypoint.sh which was treating -batchmode as a command
           docker run --rm \
             --hostname unity-docker-builder \
+            --entrypoint unity-editor \
             -u root \
             -v "${{ github.workspace }}/activation:/output" \
             -w /output \
             "unityci/editor:${{ env.GAMECI_TAG }}" \
-            sh -c 'unity-editor -batchmode -nographics -quit -logFile /output/unity.log -createManualActivationFile'
+            -batchmode \
+            -nographics \
+            -quit \
+            -logFile /output/unity.log \
+            -createManualActivationFile
           echo "--- Log ---"
           cat activation/unity.log || true
           echo "--- Files ---"
