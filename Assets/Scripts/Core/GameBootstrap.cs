@@ -80,8 +80,8 @@ namespace GiantWorld.Core
                 yield break;
             }
 
-            yield return world.BuildAllRoutine(player);
-            player.position = world.PlayerSpawn;
+            yield return world.BuildAllRoutine(player.transform);
+            player.transform.position = world.PlayerSpawn;
 
             try
             {
