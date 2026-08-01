@@ -58,6 +58,18 @@ namespace GiantWorld.World
             BuildBossArenas(player);
         }
 
+        public IEnumerator BuildBossArenasRoutine(Transform player)
+        {
+            if (player == null) yield break;
+            CatBoss = BuildCatBoss(new Vector3(0f, 0f, 0f), player);
+            yield return null;
+            VacuumBoss = BuildVacuumBoss(new Vector3(-35f, 0f, -25f), player);
+            yield return null;
+            WashingBoss = BuildWashingBoss(new Vector3(40f, 0f, -30f), player);
+            yield return null;
+            FootstepsBoss = BuildFootstepsBoss(new Vector3(0f, 0f, 45f), player);
+        }
+
         public IEnumerator BuildAllWithBossesRoutine(Transform player)
         {
             yield return BuildEnvironmentRoutine();
@@ -370,6 +382,9 @@ namespace GiantWorld.World
 
         ParticleSystem CreateDustParticles(Transform parent)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return null;
+#else
             var go = new GameObject("DustParticles");
             go.transform.SetParent(parent);
             go.transform.localPosition = new Vector3(0f, 1f, 3f);
@@ -386,6 +401,7 @@ namespace GiantWorld.World
             shape.angle = 15f;
             ps.Stop();
             return ps;
+#endif
         }
 
         Bosses.WashingMachineBoss BuildWashingBoss(Vector3 pos, Transform player)

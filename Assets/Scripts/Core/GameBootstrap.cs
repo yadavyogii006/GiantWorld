@@ -73,7 +73,6 @@ namespace GiantWorld.Core
             {
                 player = CreatePlayer();
                 player.transform.position = world.PlayerSpawn;
-                world.BuildBossArenasFor(player.transform);
 
                 var cc = player.GetComponent<CharacterController>();
                 cc.enabled = false;
@@ -92,6 +91,9 @@ namespace GiantWorld.Core
                 FailBoot(ex);
                 yield break;
             }
+
+            WebGLDebugUI.Status = "Spawning bosses...";
+            yield return world.BuildBossArenasRoutine(player.transform);
 
             try
             {
@@ -122,7 +124,6 @@ namespace GiantWorld.Core
         void Update()
         {
             if (active != this) return;
-            Bosses.CameraShake.UpdateShake();
         }
 
         void EnsureGameManager()
@@ -192,10 +193,11 @@ namespace GiantWorld.Core
             cam.allowMSAA = false;
 
             if (camGo.GetComponent<Player.FollowCamera>() == null)
-            {
-                var follow = camGo.AddComponent<Player.FollowCamera>();
-                follow.SetTarget(player);
-            }
+                camGo.AddComponent<Player.FollowCamera>();
+
+            var follow = camGo.GetComponent<Player.FollowCamera>();
+            follow.SetTarget(player);
+            follow.SnapToTarget();
 
             Bosses.CameraShake.RegisterCamera(camGo.transform);
             return cam;
