@@ -1,77 +1,71 @@
 name: Unity License Setup
 
-# OPTIONAL — only use if you cannot install Unity Hub on any computer.
-# Recommended instead: install Unity Hub only (no Editor) → get .ulf → add UNITY_LICENSE secret.
+# Generates a .alf file using Docker — no Unity 6 version bug, no email/password needed for this step.
+# After download: upload .alf at https://license.unity3d.com/manual → get .ulf → add as UNITY_LICENSE secret.
 # See DEPLOY.md Step 3.
 
 on:
   workflow_dispatch:
 
+env:
+  # Personal licenses work across Unity versions — 2022.3 LTS image is stable on game-ci
+  UNITY_VERSION: 2022.3.50f1
+  GAMECI_TAG: ubuntu-2022.3.50f1-base-3
+
 jobs:
-  activate:
+  activation-file:
     name: Generate Unity activation file (.alf)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
-      - name: Check required secrets
-        run: |
-          missing=0
-          if [ -z "${{ secrets.UNITY_EMAIL }}" ]; then
-            echo "❌ Missing secret: UNITY_EMAIL"
-            missing=1
-          else
-            echo "✅ UNITY_EMAIL is set"
-          fi
-          if [ -z "${{ secrets.UNITY_PASSWORD }}" ]; then
-            echo "❌ Missing secret: UNITY_PASSWORD"
-            missing=1
-          else
-            echo "✅ UNITY_PASSWORD is set"
-          fi
-          if [ "$missing" -eq 1 ]; then
-            echo ""
-            echo "Add secrets at: GitHub repo → Settings → Secrets and variables → Actions"
-            echo "Then re-run this workflow."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read Unity version
-        id: version
-        run: |
-          VERSION=$(grep 'm_EditorVersion:' ProjectSettings/ProjectVersion.txt | awk '{print $2}')
-          echo "unityVersion=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Using Unity version: $VERSION"
+      - name: Pull Unity Docker image
+        run: docker pull unityci/editor:${{ env.GAMECI_TAG }}
 
-      - name: Request activation file
-        id: activate
-        uses: game-ci/unity-activate@v2
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          unityVersion: ${{ steps.version.outputs.unityVersion }}
+      - name: Create manual activation file
+        run: |
+          mkdir -p activation
+          docker run --rm \
+            -u root \
+            -v "${{ github.workspace }}/activation:/output" \
+            -w /output \
+            unityci/editor:${{ env.GAMECI_TAG }} \
+            -batchmode -nographics -quit -createManualActivationFile -logFile /output/unity.log
+          echo "--- Log ---"
+          cat activation/unity.log || true
+          echo "--- Files ---"
+          ls -la activation/
+          if ! ls activation/*.alf 1>/dev/null 2>&1; then
+            echo "❌ No .alf file created. Check log above."
+            exit 1
+          fi
 
       - name: Upload activation file (.alf)
         uses: actions/upload-artifact@v4
         with:
           name: Unity-Activation-File
-          path: ${{ steps.activate.outputs.alfFile }}
+          path: activation/*.alf
           retention-days: 3
 
       - name: Next steps
         run: |
           echo "============================================"
-          echo "SUCCESS — download 'Unity-Activation-File' artifact"
+          echo "✅ Download artifact: Unity-Activation-File"
           echo ""
           echo "1. Unzip → you get a .alf file"
           echo "2. Open https://license.unity3d.com/manual"
-          echo "3. Upload .alf → download .ulf license file"
+          echo "3. Sign in → upload .alf → download .ulf"
           echo "4. Open .ulf in TextEdit → Select All → Copy"
-          echo "5. GitHub → Settings → Secrets → UNITY_LICENSE"
-          echo "   Paste the FULL text (not base64)"
+          echo "5. GitHub → Settings → Secrets → New secret:"
+          echo "   Name:  UNITY_LICENSE"
+          echo "   Value: paste full .ulf text (NOT base64)"
+          echo ""
+          echo "Also add (required for Build WebGL):"
+          echo "   UNITY_EMAIL    = your Unity account email"
+          echo "   UNITY_PASSWORD = your Unity password"
+          echo ""
           echo "6. Run 'Build WebGL' workflow"
           echo "============================================"

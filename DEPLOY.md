@@ -114,27 +114,29 @@ You now have all 3 secrets. Skip to **Step 4**.
 
 ---
 
-### Method B — GitHub Actions activation file (if Hub won't install)
+### Method B — GitHub Actions activation file (no Unity Hub needed)
 
-Use this only if you cannot install Unity Hub on any computer.
+This workflow uses Docker directly — it does **not** need `UNITY_EMAIL`/`UNITY_PASSWORD` to generate the `.alf` file.
 
-**Important:** Add `UNITY_EMAIL` and `UNITY_PASSWORD` secrets **first** (Step 2), then push the latest workflow files, then run this.
-
-1. Push latest code (includes fixed `unity-activate.yml`):
+1. Push latest code:
    ```bash
    git add .
-   git commit -m "Fix Unity license workflow"
+   git commit -m "Fix Unity 6 activation — use Docker ALF workflow"
    git push
    ```
 2. GitHub repo → **Actions → Unity License Setup → Run workflow**
-3. First step must show ✅ for both email and password secrets
-4. When green ✓, download artifact **Unity-Activation-File** (`.alf`)
-5. Go to [https://license.unity3d.com/manual](https://license.unity3d.com/manual)
-6. Upload `.alf` → download `.ulf`
-7. Open `.ulf` in TextEdit → **Select All → Copy**
-8. Add GitHub secret **`UNITY_LICENSE`** → paste full text (NOT base64)
+3. When green ✓, download artifact **Unity-Activation-File**
+4. Go to [https://license.unity3d.com/manual](https://license.unity3d.com/manual) → upload `.alf` → download `.ulf`
+5. Open `.ulf` in TextEdit → **Select All → Copy**
+6. Add GitHub secret **`UNITY_LICENSE`** → paste full text (NOT base64)
+7. Also add **`UNITY_EMAIL`** and **`UNITY_PASSWORD`** (required for the build step)
+8. Run **Build WebGL** workflow
 
 ---
+
+### If you see: "Invalid version 6000.0.x"
+
+The old `game-ci/unity-activate` action does not support Unity 6. The project now uses **2022.3 LTS** for CI builds (works the same in-game). Pull latest code and re-run **Unity License Setup**.
 
 ### If you see: "License activation strategy could not be determined"
 
@@ -250,7 +252,7 @@ Or edit `ProjectSettings/ProjectSettings.asset` — rebuild in Actions.
 ### Wrong Unity version error
 
 - Workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.txt`)
-- Current version: **6000.0.28f1**
+- Current CI version: **2022.3.50f1** (Unity 6 is not supported by game-ci activate yet)
 
 ---
 

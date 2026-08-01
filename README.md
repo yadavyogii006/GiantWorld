@@ -6,7 +6,7 @@ A coffee mug is a mountain. Books are buildings. The kitchen is an open-world ma
 
 ## Requirements
 
-- **Unity 6000.0.x** (Unity 6) or **Unity 2022.3 LTS+**
+- **Unity 2022.3 LTS** (or Unity 6 locally — CI uses 2022.3 for game-ci compatibility)
 - Input System package (included in `Packages/manifest.json`)
 
 ## Quick Start
