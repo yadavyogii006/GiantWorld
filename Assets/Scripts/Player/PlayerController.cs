@@ -1,5 +1,7 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
+#endif
 
 namespace GiantWorld.Player
 {
@@ -45,14 +47,8 @@ namespace GiantWorld.Player
         {
             if (!CanMove) return;
 
-            Keyboard kb = Keyboard.current;
-            if (kb == null) return;
-
-            float h = 0f, v = 0f;
-            if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) h -= 1f;
-            if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) h += 1f;
-            if (kb.sKey.isPressed || kb.downArrowKey.isPressed) v -= 1f;
-            if (kb.wKey.isPressed || kb.upArrowKey.isPressed) v += 1f;
+            ReadMoveInput(out float h, out float v, out bool jump, out bool sprint);
+            if (h == 0f && v == 0f && !jump) { /* still apply gravity below */ }
 
             Vector3 input = new Vector3(h, 0f, v);
             if (input.sqrMagnitude > 1f) input.Normalize();
@@ -73,7 +69,6 @@ namespace GiantWorld.Player
                 moveDir = input;
             }
 
-            bool sprint = kb.leftShiftKey.isPressed;
             float speed = sprint ? Core.GameConstants.PlayerSprintSpeed : Core.GameConstants.PlayerMoveSpeed;
 
             if (moveDir.sqrMagnitude > 0.01f)
@@ -97,17 +92,50 @@ namespace GiantWorld.Player
                 coyoteTime -= Time.deltaTime;
             }
 
-            if ((kb.spaceKey.wasPressedThisFrame) && coyoteTime > 0f)
+            if (jump && coyoteTime > 0f)
                 velocity.y = Core.GameConstants.PlayerJumpForce;
 
             velocity.y += Physics.gravity.y * Time.deltaTime;
             controller.Move(velocity * Time.deltaTime);
         }
 
+        void ReadMoveInput(out float h, out float v, out bool jump, out bool sprint)
+        {
+            h = v = 0f;
+            jump = sprint = false;
+
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) h -= 1f;
+                if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) h += 1f;
+                if (kb.sKey.isPressed || kb.downArrowKey.isPressed) v -= 1f;
+                if (kb.wKey.isPressed || kb.upArrowKey.isPressed) v += 1f;
+                jump = kb.spaceKey.wasPressedThisFrame;
+                sprint = kb.leftShiftKey.isPressed;
+                return;
+            }
+#endif
+            // Legacy input — reliable on WebGL / itch.io after clicking the game
+            h = Input.GetAxisRaw("Horizontal");
+            v = Input.GetAxisRaw("Vertical");
+            jump = Input.GetButtonDown("Jump");
+            sprint = Input.GetKey(KeyCode.LeftShift);
+        }
+
         void HandleAttackInput()
         {
-            Mouse mouse = Mouse.current;
-            if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
+            bool attack = false;
+#if ENABLE_INPUT_SYSTEM
+            var mouse = Mouse.current;
+            if (mouse != null)
+                attack = mouse.leftButton.wasPressedThisFrame;
+#endif
+            if (!attack)
+                attack = Input.GetMouseButtonDown(0);
+
+            if (!attack) return;
             if (combat == null || !combat.TryAttack()) return;
             attackLockTimer = 0.15f;
         }

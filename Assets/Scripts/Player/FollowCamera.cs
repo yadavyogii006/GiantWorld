@@ -41,15 +41,23 @@ namespace GiantWorld.Player
 
         void HandleOrbitInput()
         {
-            var mouse = UnityEngine.InputSystem.Mouse.current;
-            if (mouse == null) return;
+            if (!Input.GetMouseButton(1)) return;
 
-            if (mouse.rightButton.isPressed)
+            float mx = Input.GetAxis("Mouse X");
+            float my = Input.GetAxis("Mouse Y");
+
+#if ENABLE_INPUT_SYSTEM
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            if (mouse != null && mouse.rightButton.isPressed)
             {
-                yaw += mouse.delta.x.ReadValue() * 0.15f;
-                pitch -= mouse.delta.y.ReadValue() * 0.12f;
-                pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+                mx = mouse.delta.x.ReadValue() * 0.15f;
+                my = mouse.delta.y.ReadValue() * 0.12f;
             }
+#endif
+
+            yaw += mx * 3f;
+            pitch -= my * 3f;
+            pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
         }
     }
 }

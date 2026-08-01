@@ -46,10 +46,15 @@ namespace GiantWorld.World
 
         public static Material CreateMaterial(Color color)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            // WebGL/itch.io: prefer built-in shaders that always exist in player builds
+            Shader shader = Shader.Find("Unlit/Color");
+            if (shader == null) shader = Shader.Find("Mobile/Diffuse");
             if (shader == null) shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Legacy Shaders/Diffuse");
+
             var mat = new Material(shader);
-            mat.color = color;
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+            else mat.color = color;
             return mat;
         }
 

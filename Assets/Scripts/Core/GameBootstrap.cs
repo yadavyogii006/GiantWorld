@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+#if ENABLE_INPUT_SYSTEM && !UNITY_WEBGL
 using UnityEngine.InputSystem.UI;
+#endif
 
 namespace GiantWorld.Core
 {
@@ -12,17 +14,25 @@ namespace GiantWorld.Core
     {
         void Awake()
         {
-            EnsureGameManager();
-            EnsureEventSystem();
-            var player = CreatePlayer();
-            var camera = CreateCamera(player.transform);
-            var canvas = CreateCanvas();
-            var world = CreateWorld(player.transform);
-            var ui = SetupUI(canvas, player);
-            SetupLighting();
-            SetupBossTracking(world, ui);
+            try
+            {
+                EnsureGameManager();
+                EnsureEventSystem();
+                var player = CreatePlayer();
+                var camera = CreateCamera(player.transform);
+                var canvas = CreateCanvas();
+                var world = CreateWorld(player.transform);
+                var ui = SetupUI(canvas, player);
+                SetupLighting();
+                SetupBossTracking(world, ui);
 
-            Debug.Log("[Giant World] Kitchen loaded. You are insect-sized. Survive 4 bosses!");
+                Debug.Log("[Giant World] Kitchen loaded. You are insect-sized. Survive 4 bosses!");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError("[Giant World] Bootstrap failed: " + ex);
+                CreateFallbackCamera();
+            }
         }
 
         void Update()
@@ -42,14 +52,26 @@ namespace GiantWorld.Core
             if (FindObjectOfType<EventSystem>() != null) return;
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
-            es.AddComponent<InputSystemUIInputModule>();
+            // StandaloneInputModule is reliable on WebGL/itch.io
+            es.AddComponent<StandaloneInputModule>();
+        }
+
+        void CreateFallbackCamera()
+        {
+            if (Camera.main != null) return;
+            var camGo = new GameObject("Fallback Camera");
+            camGo.tag = "MainCamera";
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.15f, 0.2f, 0.35f);
         }
 
         GameObject CreatePlayer()
         {
             var go = new GameObject("Player");
             go.tag = "Player";
-            go.layer = LayerMask.NameToLayer("Player");
+            int playerLayer = LayerMask.NameToLayer("Player");
+            if (playerLayer >= 0) go.layer = playerLayer;
 
             var cc = go.AddComponent<CharacterController>();
             cc.height = 1.8f;
@@ -96,6 +118,8 @@ namespace GiantWorld.Core
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 500f;
             cam.fieldOfView = 60f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.55f, 0.65f, 0.85f);
 
             camGo.AddComponent<AudioListener>();
             var follow = camGo.AddComponent<Player.FollowCamera>();
@@ -145,13 +169,11 @@ namespace GiantWorld.Core
             light.type = LightType.Directional;
             light.intensity = 1.2f;
             light.color = new Color(1f, 0.95f, 0.85f);
-            light.shadows = LightShadows.Soft;
+            light.shadows = LightShadows.None; // Soft shadows can fail on some WebGL GPUs
             lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.6f, 0.65f, 0.75f);
-            RenderSettings.ambientEquatorColor = new Color(0.5f, 0.48f, 0.45f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.28f, 0.25f);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.65f, 0.65f, 0.7f);
         }
 
         void SetupBossTracking(World.WorldBuilder world, UI.UIManager ui)

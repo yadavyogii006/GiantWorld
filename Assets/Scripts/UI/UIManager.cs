@@ -115,7 +115,12 @@ namespace GiantWorld.UI
 
         void Update()
         {
-            if (UnityEngine.InputSystem.Keyboard.current?.rKey.wasPressedThisFrame == true)
+            bool restart = Input.GetKeyDown(KeyCode.R);
+#if ENABLE_INPUT_SYSTEM
+            if (!restart && UnityEngine.InputSystem.Keyboard.current != null)
+                restart = UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame;
+#endif
+            if (restart)
             {
                 var state = Core.GameManager.Instance?.State;
                 if (state == Core.GameState.PlayerDead || state == Core.GameState.Victory)
