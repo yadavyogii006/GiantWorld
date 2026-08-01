@@ -1,0 +1,42 @@
+name: Unity License Setup
+
+# Run this ONCE to get your Unity license file for GitHub Actions.
+# See DEPLOY.md Step 3 for full instructions.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  activate:
+    name: Generate Unity activation file
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Activate Unity
+        id: activate
+        uses: game-ci/unity-activate@v2
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+
+      - name: Upload activation file (.alf)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unity-Activation-File
+          path: ${{ steps.activate.outputs.alfFile }}
+          retention-days: 1
+
+      - name: Instructions
+        run: |
+          echo "============================================"
+          echo "NEXT STEPS (see DEPLOY.md Step 3):"
+          echo "1. Download 'Unity-Activation-File' artifact"
+          echo "2. Go to https://license.unity3d.com/manual"
+          echo "3. Upload the .alf file → download .ulf license"
+          echo "4. Run locally: base64 -i Unity_v6000.x.ulf | pbcopy"
+          echo "5. GitHub repo → Settings → Secrets → UNITY_LICENSE"
+          echo "6. Paste the base64 string → save"
+          echo "7. Run 'Build WebGL' workflow"
+          echo "============================================"

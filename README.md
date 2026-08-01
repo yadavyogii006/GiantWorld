@@ -86,6 +86,22 @@ Assets/Scripts/
 2. Ensure `Assets/Scenes/Main.unity` is in Scenes In Build
 3. Select platform (PC/Mac/Linux) → **Build**
 
+## Deploy to itch.io (no Unity on your Mac)
+
+Use **GitHub Actions** to build WebGL in the cloud, then upload to itch.io.
+
+**Full guide:** [DEPLOY.md](DEPLOY.md)
+
+Quick version:
+1. Push this folder to GitHub
+2. Add secrets: `UNITY_EMAIL`, `UNITY_PASSWORD`, `UNITY_LICENSE`
+3. Run **Unity License Setup** workflow (once)
+4. Run **Build WebGL** workflow
+5. Download **GiantWorld-WebGL-zip** artifact
+6. Upload zip to [itch.io](https://itch.io) as an **HTML** game
+
+Live URL: `https://YOUR_USERNAME.itch.io/giant-world`
+
 ## Notes
 
 - Uses **procedural primitives** (no external assets required)
