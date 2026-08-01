@@ -5,7 +5,6 @@ namespace GiantWorld.Core
 {
     /// <summary>
     /// On-screen boot status — visible on itch.io even when 3D rendering fails.
-    /// Uses uGUI (not IMGUI) for reliable WebGL display.
     /// </summary>
     public class WebGLDebugUI : MonoBehaviour
     {
@@ -13,8 +12,7 @@ namespace GiantWorld.Core
         static WebGLDebugUI instance;
         static Text statusText;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        static void Create()
+        public static void EnsureCreated()
         {
             if (instance != null) return;
             var go = new GameObject("WebGLDebugUI");

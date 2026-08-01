@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using GiantWorld.Core;
 
@@ -21,17 +22,36 @@ namespace GiantWorld.World
 
         public void BuildAll(Transform player)
         {
+            // Synchronous path (Editor). WebGL uses BuildAllRoutine via GameBootstrap.
+            var routine = BuildAllRoutine(player);
+            while (routine.MoveNext()) { }
+        }
+
+        public IEnumerator BuildAllRoutine(Transform player)
+        {
             WorldRoot = new GameObject("KitchenWorld").transform;
             InitMaterials();
 
             BuildFloor();
+            yield return null;
+
             BuildCoffeeMugMountain(new Vector3(25f, 0f, 20f));
+            yield return null;
+
             BuildBookCity(new Vector3(-30f, 0f, 25f));
+            yield return null;
+
             BuildTableLegs(new Vector3(0f, 0f, -40f));
             BuildSink(new Vector3(45f, 0f, -10f));
+            yield return null;
+
             BuildStove(new Vector3(-45f, 0f, -5f));
             BuildCrumbHills();
+            yield return null;
+
             BuildCollectibles();
+            yield return null;
+
             BuildBossArenas(player);
         }
 
@@ -55,7 +75,7 @@ namespace GiantWorld.World
             floor.transform.localScale = new Vector3(12f, 1f, 12f);
             floor.transform.position = Vector3.zero;
             floor.layer = LayerMask.NameToLayer("Ground");
-            floor.GetComponent<Renderer>().material = floorMat;
+            floor.GetComponent<Renderer>().sharedMaterial = floorMat;
         }
 
         void BuildCoffeeMugMountain(Vector3 basePos)
@@ -70,7 +90,7 @@ namespace GiantWorld.World
             body.transform.SetParent(mugRoot);
             body.transform.localScale = new Vector3(8f, 6f, 8f);
             body.transform.localPosition = new Vector3(0f, 6f, 0f);
-            body.GetComponent<Renderer>().material = mugMat;
+            body.GetComponent<Renderer>().sharedMaterial = mugMat;
 
             // Handle — torus-like arch
             var handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -79,7 +99,7 @@ namespace GiantWorld.World
             handle.transform.localScale = new Vector3(1.5f, 5f, 3f);
             handle.transform.localPosition = new Vector3(5f, 5f, 0f);
             handle.transform.localRotation = Quaternion.Euler(0f, 0f, 15f);
-            handle.GetComponent<Renderer>().material = mugMat;
+            handle.GetComponent<Renderer>().sharedMaterial = mugMat;
 
             // Coffee surface at top — dark liquid hazard
             var coffee = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -87,7 +107,7 @@ namespace GiantWorld.World
             coffee.transform.SetParent(mugRoot);
             coffee.transform.localScale = new Vector3(7f, 0.1f, 7f);
             coffee.transform.localPosition = new Vector3(0f, 12f, 0f);
-            coffee.GetComponent<Renderer>().material = CreateMaterial(new Color(0.25f, 0.12f, 0.05f));
+            coffee.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.25f, 0.12f, 0.05f));
             coffee.GetComponent<Collider>().isTrigger = true;
             coffee.AddComponent<HazardZone>();
 
@@ -97,7 +117,7 @@ namespace GiantWorld.World
             summit.transform.SetParent(mugRoot);
             summit.transform.localScale = new Vector3(3f, 0.3f, 3f);
             summit.transform.localPosition = new Vector3(0f, 12.3f, 0f);
-            summit.GetComponent<Renderer>().material = CreateMaterial(new Color(0.6f, 0.55f, 0.5f));
+            summit.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.6f, 0.55f, 0.5f));
 
             // Label sign
             CreateSign(mugRoot, new Vector3(0f, 14f, 0f), "MUG PEAK", "A coffee mug. A mountain.");
@@ -129,7 +149,7 @@ namespace GiantWorld.World
                 book.transform.SetParent(cityRoot);
                 book.transform.localScale = new Vector3(4f, h, 5f);
                 book.transform.localPosition = new Vector3(x, h * 0.5f, z);
-                book.GetComponent<Renderer>().material = CreateMaterial(colors[i % colors.Length]);
+                book.GetComponent<Renderer>().sharedMaterial = CreateMaterial(colors[i % colors.Length]);
             }
 
             CreateSign(cityRoot, new Vector3(0f, 12f, -5f), "BOOK CITY", "Each book is a skyscraper.");
@@ -149,7 +169,7 @@ namespace GiantWorld.World
                 leg.transform.SetParent(tableRoot);
                 leg.transform.localScale = new Vector3(3f, 15f, 3f);
                 leg.transform.localPosition = lp + new Vector3(0f, 15f, 0f);
-                leg.GetComponent<Renderer>().material = tableMat;
+                leg.GetComponent<Renderer>().sharedMaterial = tableMat;
             }
 
             // Table underside — ceiling of the world section
@@ -158,7 +178,7 @@ namespace GiantWorld.World
             underside.transform.SetParent(tableRoot);
             underside.transform.localScale = new Vector3(40f, 1f, 30f);
             underside.transform.localPosition = new Vector3(0f, 30f, 0f);
-            underside.GetComponent<Renderer>().material = tableMat;
+            underside.GetComponent<Renderer>().sharedMaterial = tableMat;
         }
 
         void BuildSink(Vector3 pos)
@@ -171,14 +191,14 @@ namespace GiantWorld.World
             basin.transform.SetParent(sinkRoot);
             basin.transform.localScale = new Vector3(12f, 3f, 8f);
             basin.transform.localPosition = new Vector3(0f, 1.5f, 0f);
-            basin.GetComponent<Renderer>().material = metalMat;
+            basin.GetComponent<Renderer>().sharedMaterial = metalMat;
 
             var water = GameObject.CreatePrimitive(PrimitiveType.Cube);
             water.name = "WaterHazard";
             water.transform.SetParent(sinkRoot);
             water.transform.localScale = new Vector3(10f, 0.5f, 6f);
             water.transform.localPosition = new Vector3(0f, 1f, 0f);
-            water.GetComponent<Renderer>().material = CreateMaterial(new Color(0.3f, 0.6f, 0.9f, 0.7f));
+            water.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.3f, 0.6f, 0.9f, 0.7f));
             water.GetComponent<Collider>().isTrigger = true;
             water.AddComponent<HazardZone>();
 
@@ -195,7 +215,7 @@ namespace GiantWorld.World
             body.transform.SetParent(stoveRoot);
             body.transform.localScale = new Vector3(10f, 4f, 8f);
             body.transform.localPosition = new Vector3(0f, 2f, 0f);
-            body.GetComponent<Renderer>().material = metalMat;
+            body.GetComponent<Renderer>().sharedMaterial = metalMat;
 
             for (int i = 0; i < 4; i++)
             {
@@ -204,7 +224,7 @@ namespace GiantWorld.World
                 burner.transform.SetParent(stoveRoot);
                 burner.transform.localScale = new Vector3(2f, 0.2f, 2f);
                 burner.transform.localPosition = new Vector3((i % 2) * 4f - 2f, 4.1f, (i / 2) * 4f - 2f);
-                burner.GetComponent<Renderer>().material = CreateMaterial(new Color(0.9f, 0.3f, 0.1f));
+                burner.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.9f, 0.3f, 0.1f));
                 burner.GetComponent<Collider>().isTrigger = true;
                 burner.AddComponent<HazardZone>();
             }
@@ -222,7 +242,7 @@ namespace GiantWorld.World
                 float scale = Random.Range(0.8f, 2.5f);
                 crumb.transform.localScale = Vector3.one * scale;
                 crumb.transform.position = new Vector3(Random.Range(-50f, 50f), scale * 0.4f, Random.Range(-50f, 50f));
-                crumb.GetComponent<Renderer>().material = CreateMaterial(new Color(0.75f, 0.55f, 0.25f));
+                crumb.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.75f, 0.55f, 0.25f));
             }
         }
 
@@ -241,7 +261,7 @@ namespace GiantWorld.World
                 c.transform.SetParent(WorldRoot);
                 c.transform.position = p;
                 c.transform.localScale = Vector3.one * 0.6f;
-                c.GetComponent<Renderer>().material = CreateMaterial(new Color(1f, 0.95f, 0.7f));
+                c.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(1f, 0.95f, 0.7f));
                 var col = c.GetComponent<SphereCollider>();
                 col.isTrigger = true;
                 col.radius = 1.5f;
@@ -268,21 +288,21 @@ namespace GiantWorld.World
             body.transform.SetParent(root);
             body.transform.localScale = new Vector3(6f, 3f, 10f);
             body.transform.localPosition = new Vector3(0f, 2f, 0f);
-            body.GetComponent<Renderer>().material = CreateMaterial(new Color(0.9f, 0.55f, 0.15f));
+            body.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.9f, 0.55f, 0.15f));
 
             var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             head.name = "CatHead";
             head.transform.SetParent(root);
             head.transform.localScale = Vector3.one * 3.5f;
             head.transform.localPosition = new Vector3(0f, 3f, 5f);
-            head.GetComponent<Renderer>().material = CreateMaterial(new Color(0.9f, 0.55f, 0.15f));
+            head.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.9f, 0.55f, 0.15f));
 
             var paw = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             paw.name = "CatPaw";
             paw.transform.SetParent(root);
             paw.transform.localScale = Vector3.one * 2f;
             paw.transform.localPosition = new Vector3(2f, 1f, 4f);
-            paw.GetComponent<Renderer>().material = CreateMaterial(new Color(0.95f, 0.6f, 0.2f));
+            paw.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.95f, 0.6f, 0.2f));
 
             var boss = root.gameObject.AddComponent<Bosses.CatBoss>();
             boss.Initialize(player);
@@ -305,7 +325,7 @@ namespace GiantWorld.World
             body.transform.SetParent(root);
             body.transform.localScale = new Vector3(4f, 2f, 4f);
             body.transform.localPosition = new Vector3(0f, 2f, 0f);
-            body.GetComponent<Renderer>().material = metalMat;
+            body.GetComponent<Renderer>().sharedMaterial = metalMat;
 
             var nozzle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             nozzle.name = "Nozzle";
@@ -313,13 +333,13 @@ namespace GiantWorld.World
             nozzle.transform.localScale = new Vector3(2f, 1f, 2f);
             nozzle.transform.localPosition = new Vector3(0f, 1f, 4f);
             nozzle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            nozzle.GetComponent<Renderer>().material = CreateMaterial(new Color(0.2f, 0.2f, 0.2f));
+            nozzle.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.2f, 0.2f, 0.2f));
 
             var hose = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             hose.transform.SetParent(root);
             hose.transform.localScale = new Vector3(1f, 3f, 1f);
             hose.transform.localPosition = new Vector3(-3f, 3f, -2f);
-            hose.GetComponent<Renderer>().material = CreateMaterial(new Color(0.15f, 0.15f, 0.15f));
+            hose.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.15f, 0.15f, 0.15f));
 
             var particles = CreateDustParticles(root);
 
@@ -349,9 +369,9 @@ namespace GiantWorld.World
             main.startSize = 0.3f;
             main.startSpeed = 5f;
             main.startColor = new Color(0.6f, 0.5f, 0.4f, 0.6f);
-            main.maxParticles = 200;
+            main.maxParticles = 30;
             var emission = ps.emission;
-            emission.rateOverTime = 40f;
+            emission.rateOverTime = 15f;
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
             shape.angle = 15f;
@@ -369,7 +389,7 @@ namespace GiantWorld.World
             body.transform.SetParent(root);
             body.transform.localScale = new Vector3(8f, 8f, 6f);
             body.transform.localPosition = new Vector3(0f, 4f, 0f);
-            body.GetComponent<Renderer>().material = CreateMaterial(new Color(0.95f, 0.95f, 0.98f));
+            body.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.95f, 0.95f, 0.98f));
 
             var drum = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             drum.name = "Drum";
@@ -377,7 +397,7 @@ namespace GiantWorld.World
             drum.transform.localScale = new Vector3(4f, 0.5f, 4f);
             drum.transform.localPosition = new Vector3(0f, 5f, 0f);
             drum.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            drum.GetComponent<Renderer>().material = metalMat;
+            drum.GetComponent<Renderer>().sharedMaterial = metalMat;
             Destroy(drum.GetComponent<Collider>());
 
             var door = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -386,7 +406,7 @@ namespace GiantWorld.World
             door.transform.localScale = new Vector3(3.5f, 0.3f, 3.5f);
             door.transform.localPosition = new Vector3(0f, 4f, 3.1f);
             door.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            door.GetComponent<Renderer>().material = CreateMaterial(new Color(0.7f, 0.8f, 0.9f, 0.5f));
+            door.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.7f, 0.8f, 0.9f, 0.5f));
             Destroy(door.GetComponent<Collider>());
 
             var splash = new GameObject("SplashOrigin").transform;
@@ -413,7 +433,7 @@ namespace GiantWorld.World
             leftFoot.transform.SetParent(root);
             leftFoot.transform.localScale = new Vector3(6f, 2f, 12f);
             leftFoot.transform.localPosition = new Vector3(-8f, 20f, 0f);
-            leftFoot.GetComponent<Renderer>().material = CreateMaterial(new Color(0.3f, 0.25f, 0.2f));
+            leftFoot.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.3f, 0.25f, 0.2f));
             Destroy(leftFoot.GetComponent<Collider>());
 
             var rightFoot = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -421,7 +441,7 @@ namespace GiantWorld.World
             rightFoot.transform.SetParent(root);
             rightFoot.transform.localScale = new Vector3(6f, 2f, 12f);
             rightFoot.transform.localPosition = new Vector3(8f, 20f, 0f);
-            rightFoot.GetComponent<Renderer>().material = CreateMaterial(new Color(0.3f, 0.25f, 0.2f));
+            rightFoot.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.3f, 0.25f, 0.2f));
             Destroy(rightFoot.GetComponent<Collider>());
 
             var boss = root.gameObject.AddComponent<Bosses.FootstepsBoss>();
@@ -459,14 +479,14 @@ namespace GiantWorld.World
             pole.transform.SetParent(sign.transform);
             pole.transform.localScale = new Vector3(0.2f, 2f, 0.2f);
             pole.transform.localPosition = Vector3.zero;
-            pole.GetComponent<Renderer>().material = tableMat;
+            pole.GetComponent<Renderer>().sharedMaterial = tableMat;
             Destroy(pole.GetComponent<Collider>());
 
             var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
             board.transform.SetParent(sign.transform);
             board.transform.localScale = new Vector3(4f, 1.5f, 0.2f);
             board.transform.localPosition = new Vector3(0f, 2.5f, 0f);
-            board.GetComponent<Renderer>().material = CreateMaterial(new Color(0.95f, 0.9f, 0.7f));
+            board.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.95f, 0.9f, 0.7f));
             Destroy(board.GetComponent<Collider>());
         }
     }

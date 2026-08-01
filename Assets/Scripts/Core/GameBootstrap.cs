@@ -6,9 +6,18 @@ namespace GiantWorld.Core
 {
     public class GameBootstrap : MonoBehaviour
     {
+        static GameBootstrap active;
+
         void Awake()
         {
-            // Camera + blue clear color must exist before anything else (WebGL black-screen guard).
+            if (active != null && active != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            active = this;
+
+            WebGLDebugUI.EnsureCreated();
             WebGLDebugUI.Status = "Booting Giant World...";
             AutoStart.EnsureFallbackCameraPublic();
             ForceWebGLCameraSettings();
@@ -16,6 +25,7 @@ namespace GiantWorld.Core
 
         void Start()
         {
+            if (active != this) return;
             StartCoroutine(BootRoutine());
         }
 
@@ -56,10 +66,25 @@ namespace GiantWorld.Core
             WebGLDebugUI.Status = "Building kitchen world...";
             yield return null;
 
+            World.WorldBuilder world = null;
+            Canvas canvas = null;
             try
             {
-                var canvas = CreateCanvas();
-                var world = CreateWorld(player.transform);
+                canvas = CreateCanvas();
+                var wbGo = new GameObject("WorldBuilder");
+                world = wbGo.AddComponent<World.WorldBuilder>();
+            }
+            catch (System.Exception ex)
+            {
+                FailBoot(ex);
+                yield break;
+            }
+
+            yield return world.BuildAllRoutine(player);
+            player.position = world.PlayerSpawn;
+
+            try
+            {
                 var ui = SetupUI(canvas, player);
                 SetupLighting();
                 SetupBossTracking(world, ui);
@@ -86,6 +111,7 @@ namespace GiantWorld.Core
 
         void Update()
         {
+            if (active != this) return;
             Bosses.CameraShake.UpdateShake();
         }
 
@@ -177,15 +203,6 @@ namespace GiantWorld.Core
             return canvas;
         }
 
-        World.WorldBuilder CreateWorld(Transform player)
-        {
-            var wbGo = new GameObject("WorldBuilder");
-            var wb = wbGo.AddComponent<World.WorldBuilder>();
-            wb.BuildAll(player);
-            player.position = wb.PlayerSpawn;
-            return wb;
-        }
-
         UI.UIManager SetupUI(Canvas canvas, GameObject player)
         {
             try
@@ -208,9 +225,7 @@ namespace GiantWorld.Core
         void SetupLighting()
         {
             foreach (var light in FindObjectsOfType<Light>())
-            {
                 light.shadows = LightShadows.None;
-            }
 
             if (FindObjectOfType<Light>() == null)
             {
@@ -235,7 +250,7 @@ namespace GiantWorld.Core
 
             gm.OnBossStarted += _ =>
             {
-                Bosses.BossBase active = gm.CurrentBoss switch
+                Bosses.BossBase activeBoss = gm.CurrentBoss switch
                 {
                     BossType.Cat => world.CatBoss,
                     BossType.Vacuum => world.VacuumBoss,
@@ -243,7 +258,7 @@ namespace GiantWorld.Core
                     BossType.Footsteps => world.FootstepsBoss,
                     _ => null
                 };
-                if (active != null) ui.TrackBoss(active);
+                if (activeBoss != null) ui.TrackBoss(activeBoss);
             };
         }
     }
