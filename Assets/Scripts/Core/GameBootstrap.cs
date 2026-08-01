@@ -209,7 +209,7 @@ namespace GiantWorld.Core
 
         void EnsureEventSystem()
         {
-            if FindObjectOfType<EventSystem>() != null) return;
+            if (FindObjectOfType<EventSystem>() != null) return;
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
             es.AddComponent<StandaloneInputModule>();
