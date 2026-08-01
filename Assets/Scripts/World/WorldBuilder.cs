@@ -1,4 +1,5 @@
 using UnityEngine;
+using GiantWorld.Core;
 
 namespace GiantWorld.World
 {

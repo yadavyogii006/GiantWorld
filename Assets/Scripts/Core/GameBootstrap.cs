@@ -35,20 +35,29 @@ namespace GiantWorld.Core
         {
             yield return null;
 
+            EnsureGameManager();
+            EnsureEventSystem();
+
+            WebGLDebugUI.Status = "Creating player...";
+            yield return null;
+
+            GameObject player;
             try
             {
-                EnsureGameManager();
-                EnsureEventSystem();
+                player = CreatePlayer();
+                SetupCamera(player.transform);
+            }
+            catch (System.Exception ex)
+            {
+                FailBoot(ex);
+                yield break;
+            }
 
-                WebGLDebugUI.Status = "Creating player...";
-                yield return null;
+            WebGLDebugUI.Status = "Building kitchen world...";
+            yield return null;
 
-                var player = CreatePlayer();
-                var camera = SetupCamera(player.transform);
-
-                WebGLDebugUI.Status = "Building kitchen world...";
-                yield return null;
-
+            try
+            {
                 var canvas = CreateCanvas();
                 var world = CreateWorld(player.transform);
                 var ui = SetupUI(canvas, player);
@@ -61,11 +70,16 @@ namespace GiantWorld.Core
             }
             catch (System.Exception ex)
             {
-                WebGLDebugUI.Status = "Error: " + ex.Message;
-                Debug.LogError("[Giant World] Bootstrap failed: " + ex);
-                AutoStart.EnsureFallbackCameraPublic();
-                ForceWebGLCameraSettings();
+                FailBoot(ex);
             }
+        }
+
+        void FailBoot(System.Exception ex)
+        {
+            WebGLDebugUI.Status = "Error: " + ex.Message;
+            Debug.LogError("[Giant World] Bootstrap failed: " + ex);
+            AutoStart.EnsureFallbackCameraPublic();
+            ForceWebGLCameraSettings();
         }
 
         void HideDebugOverlay() => WebGLDebugUI.Hide();
