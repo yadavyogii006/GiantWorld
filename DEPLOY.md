@@ -85,44 +85,70 @@ Optional (only if you have Unity Pro):
 
 GitHub's cloud runner needs a Unity license. Do this **once**.
 
-### 3a. Run the license workflow
+You need **3 secrets** before building:
+- `UNITY_EMAIL`
+- `UNITY_PASSWORD`
+- `UNITY_LICENSE` (contents of a `.ulf` file)
 
-1. GitHub repo → **Actions** tab
-2. Left sidebar: **Unity License Setup**
-3. Click **Run workflow** → **Run workflow**
-4. Wait ~2–5 minutes for green checkmark
+---
 
-### 3b. Download the activation file
+### Method A — Unity Hub only (recommended, ~5 min)
 
-1. Click the completed workflow run
-2. Under **Artifacts**, download **Unity-Activation-File**
-3. Unzip — you get a `.alf` file
+You do **not** need the full Unity Editor or WebGL module. **Unity Hub alone** is enough (~200 MB, works on low-memory Macs).
 
-### 3c. Get your license file
+1. Download **Unity Hub** only: [https://unity.com/download](https://unity.com/download)
+2. Sign in with your Unity account
+3. **Unity Hub → Settings (gear) → Licenses → Add → Get a free personal license**
+4. Find the license file on Mac:
+   ```
+   /Library/Application Support/Unity/Unity_lic.ulf
+   ```
+   (In Finder: **Go → Go to Folder** and paste that path)
+5. Open `Unity_lic.ulf` in **TextEdit**
+6. **Select All → Copy** (copy the entire text, including `<?xml` at the top)
+7. GitHub repo → **Settings → Secrets → New repository secret**
+   - Name: `UNITY_LICENSE`
+   - Value: **paste the full text** (NOT base64)
 
-1. Open [https://license.unity3d.com/manual](https://license.unity3d.com/manual)
-2. Sign in with the **same Unity email**
-3. Upload the `.alf` file
-4. Download the `.ulf` license file
+You now have all 3 secrets. Skip to **Step 4**.
 
-### 3d. Add UNITY_LICENSE secret
+---
 
-On your Mac Terminal:
+### Method B — GitHub Actions activation file (if Hub won't install)
 
-```bash
-base64 -i ~/Downloads/Unity_v6000.x.ulf | pbcopy
-```
+Use this only if you cannot install Unity Hub on any computer.
 
-(Press **i** in `base64 -i` — that's the input flag, not a typo.)
+**Important:** Add `UNITY_EMAIL` and `UNITY_PASSWORD` secrets **first** (Step 2), then push the latest workflow files, then run this.
 
-This copies the base64 license to your clipboard.
+1. Push latest code (includes fixed `unity-activate.yml`):
+   ```bash
+   git add .
+   git commit -m "Fix Unity license workflow"
+   git push
+   ```
+2. GitHub repo → **Actions → Unity License Setup → Run workflow**
+3. First step must show ✅ for both email and password secrets
+4. When green ✓, download artifact **Unity-Activation-File** (`.alf`)
+5. Go to [https://license.unity3d.com/manual](https://license.unity3d.com/manual)
+6. Upload `.alf` → download `.ulf`
+7. Open `.ulf` in TextEdit → **Select All → Copy**
+8. Add GitHub secret **`UNITY_LICENSE`** → paste full text (NOT base64)
 
-1. GitHub repo → **Settings → Secrets → New repository secret**
-2. Name: `UNITY_LICENSE`
-3. Value: paste (Cmd+V) the entire base64 string
-4. Save
+---
 
-You now have 3 secrets: `UNITY_EMAIL`, `UNITY_PASSWORD`, `UNITY_LICENSE`.
+### If you see: "License activation strategy could not be determined"
+
+This means GitHub secrets are **missing or empty**:
+
+| Check | Fix |
+|-------|-----|
+| `UNITY_EMAIL` not set | Add in Settings → Secrets |
+| `UNITY_PASSWORD` not set | Add in Settings → Secrets |
+| Typo in secret name | Must be exact: `UNITY_EMAIL`, `UNITY_PASSWORD` |
+| Ran workflow before adding secrets | Add secrets, then re-run |
+| Using a forked repo | Secrets must be on **your** fork, not the original |
+
+The Node 20 warning in the log is harmless — ignore it.
 
 ---
 
@@ -188,10 +214,13 @@ Download the new zip → re-upload on itch.io (replace old file).
 
 ## Troubleshooting
 
-### Build fails: "License activation failed"
+### Build fails: "License activation failed" or "strategy could not be determined"
 
-- Re-run **Unity License Setup** and repeat Step 3
-- Unity licenses expire — regenerate `UNITY_LICENSE` every few months if builds suddenly fail
+- Ensure all 3 secrets exist: `UNITY_EMAIL`, `UNITY_PASSWORD`, `UNITY_LICENSE`
+- `UNITY_LICENSE` = **raw text** from `.ulf` file (TextEdit → Select All → Copy). NOT base64
+- Add email/password secrets **before** running Unity License Setup workflow
+- Easiest fix: install **Unity Hub only** (no Editor) → get `.ulf` → paste into `UNITY_LICENSE` secret
+- Re-get license via Unity Hub if builds fail after months (licenses can expire)
 
 ### Build fails: "Insufficient disk space"
 

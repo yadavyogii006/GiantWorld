@@ -1,42 +1,77 @@
 name: Unity License Setup
 
-# Run this ONCE to get your Unity license file for GitHub Actions.
-# See DEPLOY.md Step 3 for full instructions.
+# OPTIONAL — only use if you cannot install Unity Hub on any computer.
+# Recommended instead: install Unity Hub only (no Editor) → get .ulf → add UNITY_LICENSE secret.
+# See DEPLOY.md Step 3.
 
 on:
   workflow_dispatch:
 
 jobs:
   activate:
-    name: Generate Unity activation file
+    name: Generate Unity activation file (.alf)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
-      - name: Activate Unity
+      - name: Check required secrets
+        run: |
+          missing=0
+          if [ -z "${{ secrets.UNITY_EMAIL }}" ]; then
+            echo "❌ Missing secret: UNITY_EMAIL"
+            missing=1
+          else
+            echo "✅ UNITY_EMAIL is set"
+          fi
+          if [ -z "${{ secrets.UNITY_PASSWORD }}" ]; then
+            echo "❌ Missing secret: UNITY_PASSWORD"
+            missing=1
+          else
+            echo "✅ UNITY_PASSWORD is set"
+          fi
+          if [ "$missing" -eq 1 ]; then
+            echo ""
+            echo "Add secrets at: GitHub repo → Settings → Secrets and variables → Actions"
+            echo "Then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Unity version
+        id: version
+        run: |
+          VERSION=$(grep 'm_EditorVersion:' ProjectSettings/ProjectVersion.txt | awk '{print $2}')
+          echo "unityVersion=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using Unity version: $VERSION"
+
+      - name: Request activation file
         id: activate
         uses: game-ci/unity-activate@v2
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: ${{ steps.version.outputs.unityVersion }}
 
       - name: Upload activation file (.alf)
         uses: actions/upload-artifact@v4
         with:
           name: Unity-Activation-File
           path: ${{ steps.activate.outputs.alfFile }}
-          retention-days: 1
+          retention-days: 3
 
-      - name: Instructions
+      - name: Next steps
         run: |
           echo "============================================"
-          echo "NEXT STEPS (see DEPLOY.md Step 3):"
-          echo "1. Download 'Unity-Activation-File' artifact"
-          echo "2. Go to https://license.unity3d.com/manual"
-          echo "3. Upload the .alf file → download .ulf license"
-          echo "4. Run locally: base64 -i Unity_v6000.x.ulf | pbcopy"
-          echo "5. GitHub repo → Settings → Secrets → UNITY_LICENSE"
-          echo "6. Paste the base64 string → save"
-          echo "7. Run 'Build WebGL' workflow"
+          echo "SUCCESS — download 'Unity-Activation-File' artifact"
+          echo ""
+          echo "1. Unzip → you get a .alf file"
+          echo "2. Open https://license.unity3d.com/manual"
+          echo "3. Upload .alf → download .ulf license file"
+          echo "4. Open .ulf in TextEdit → Select All → Copy"
+          echo "5. GitHub → Settings → Secrets → UNITY_LICENSE"
+          echo "   Paste the FULL text (not base64)"
+          echo "6. Run 'Build WebGL' workflow"
           echo "============================================"
