@@ -47,68 +47,55 @@ namespace GiantWorld.Core
 
             EnsureGameManager();
             EnsureEventSystem();
+            SetupLighting();
 
-            WebGLDebugUI.Status = "Creating player...";
-            yield return null;
+            World.WorldBuilder world;
+            Canvas canvas;
+            GameObject player;
 
-            World.WorldBuilder world = null;
-            Canvas canvas = null;
             try
             {
                 canvas = CreateCanvas();
                 var wbGo = new GameObject("WorldBuilder");
                 world = wbGo.AddComponent<World.WorldBuilder>();
-            }
-            catch (System.Exception ex)
-            {
-                FailBoot(ex);
-                yield break;
-            }
 
-            WebGLDebugUI.Status = "Building kitchen world...";
-            yield return world.BuildEnvironmentRoutine();
+                WebGLDebugUI.Status = "Creating floor...";
+                world.BeginWorld();
+                yield return null;
 
-            GameObject player;
-            try
-            {
+                WebGLDebugUI.Status = "Spawning player...";
                 player = CreatePlayer();
-                player.transform.position = world.PlayerSpawn;
-
-                var cc = player.GetComponent<CharacterController>();
-                cc.enabled = false;
-                player.transform.position = world.PlayerSpawn;
-                cc.enabled = true;
-
-                var pc = player.GetComponent<Player.PlayerController>();
-                pc.ResetMotion();
-
+                PlacePlayer(player.transform, world.PlayerSpawn);
                 SetupCamera(player.transform);
-                var follow = Camera.main?.GetComponent<Player.FollowCamera>();
-                follow?.SnapToTarget();
-            }
-            catch (System.Exception ex)
-            {
-                FailBoot(ex);
-                yield break;
-            }
 
-            WebGLDebugUI.Status = "Spawning bosses...";
-            yield return world.BuildBossArenasRoutine(player.transform);
-
-            try
-            {
                 var ui = SetupUI(canvas, player);
-                SetupLighting();
                 SetupBossTracking(world, ui);
 
-                WebGLDebugUI.Status = "Ready! Click game, then WASD to move.";
-                Debug.Log("[Giant World] Kitchen loaded.");
-                Invoke(nameof(HideDebugOverlay), 8f);
+                WebGLDebugUI.Status = "READY — click game, then WASD to move!";
             }
             catch (System.Exception ex)
             {
                 FailBoot(ex);
+                yield break;
             }
+
+            yield return world.BuildLandmarksRoutine();
+
+            WebGLDebugUI.Status = "Loading bosses...";
+            yield return world.BuildBossArenasRoutine(player.transform);
+
+            WebGLDebugUI.Status = "Kitchen loaded! WASD move, Shift sprint, Space jump.";
+            Debug.Log("[Giant World] Kitchen loaded.");
+            Invoke(nameof(HideDebugOverlay), 10f);
+        }
+
+        static void PlacePlayer(Transform player, Vector3 spawn)
+        {
+            var cc = player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+            player.position = spawn;
+            if (cc != null) cc.enabled = true;
+            player.GetComponent<Player.PlayerController>()?.ResetMotion();
         }
 
         void FailBoot(System.Exception ex)
@@ -120,25 +107,6 @@ namespace GiantWorld.Core
         }
 
         void HideDebugOverlay() => WebGLDebugUI.Hide();
-
-        void Update()
-        {
-            if (active != this) return;
-        }
-
-        void EnsureGameManager()
-        {
-            if (GameManager.Instance != null) return;
-            new GameObject("GameManager").AddComponent<GameManager>();
-        }
-
-        void EnsureEventSystem()
-        {
-            if (FindObjectOfType<EventSystem>() != null) return;
-            var es = new GameObject("EventSystem");
-            es.AddComponent<EventSystem>();
-            es.AddComponent<StandaloneInputModule>();
-        }
 
         GameObject CreatePlayer()
         {
@@ -159,9 +127,9 @@ namespace GiantWorld.Core
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "BodyVisual";
             body.transform.SetParent(go.transform);
-            body.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+            body.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
             body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            body.GetComponent<Renderer>().sharedMaterial = MaterialCache.Get(new Color(0.2f, 0.8f, 0.3f));
+            body.GetComponent<Renderer>().sharedMaterial = MaterialCache.Get(new Color(0.1f, 0.95f, 0.2f));
             Destroy(body.GetComponent<Collider>());
 
             return go;
@@ -229,9 +197,22 @@ namespace GiantWorld.Core
             catch (System.Exception ex)
             {
                 Debug.LogWarning("[Giant World] UI setup skipped: " + ex.Message);
-                WebGLDebugUI.Status = "World loaded (UI skipped). WASD to move.";
                 return null;
             }
+        }
+
+        void EnsureGameManager()
+        {
+            if (GameManager.Instance != null) return;
+            new GameObject("GameManager").AddComponent<GameManager>();
+        }
+
+        void EnsureEventSystem()
+        {
+            if FindObjectOfType<EventSystem>() != null) return;
+            var es = new GameObject("EventSystem");
+            es.AddComponent<EventSystem>();
+            es.AddComponent<StandaloneInputModule>();
         }
 
         void SetupLighting()

@@ -26,30 +26,47 @@ namespace GiantWorld.World
             while (routine.MoveNext()) { }
         }
 
-        public IEnumerator BuildEnvironmentRoutine()
+        public void BeginWorld()
         {
             WorldRoot = new GameObject("KitchenWorld").transform;
             InitMaterials();
-
             BuildFloor();
-            yield return null;
+        }
 
-            BuildCoffeeMugMountain(new Vector3(25f, 0f, 20f));
-            yield return null;
+        public IEnumerator BuildLandmarksRoutine()
+        {
+            yield return RunStep("Building mug mountain...", () => BuildCoffeeMugMountain(new Vector3(25f, 0f, 20f)));
+            yield return RunStep("Building book city...", () => BuildBookCity(new Vector3(-30f, 0f, 25f)));
+            yield return RunStep("Building table...", () => BuildTableLegs(new Vector3(0f, 0f, -40f)));
+            yield return RunStep("Building sink...", () => BuildSink(new Vector3(45f, 0f, -10f)));
+            yield return RunStep("Building stove...", () =>
+            {
+                BuildStove(new Vector3(-45f, 0f, -5f));
+                BuildCrumbHills();
+            });
+            yield return RunStep("Adding collectibles...", () => BuildCollectibles());
+        }
 
-            BuildBookCity(new Vector3(-30f, 0f, 25f));
+        static IEnumerator RunStep(string label, System.Action action)
+        {
+            WebGLDebugUI.Status = label;
+            try
+            {
+                action?.Invoke();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError("[Giant World] " + label + " " + ex);
+                WebGLDebugUI.Status = "Warning: " + label + " skipped.";
+            }
             yield return null;
+        }
 
-            BuildTableLegs(new Vector3(0f, 0f, -40f));
-            BuildSink(new Vector3(45f, 0f, -10f));
+        public IEnumerator BuildEnvironmentRoutine()
+        {
+            BeginWorld();
             yield return null;
-
-            BuildStove(new Vector3(-45f, 0f, -5f));
-            BuildCrumbHills();
-            yield return null;
-
-            BuildCollectibles();
-            yield return null;
+            yield return BuildLandmarksRoutine();
         }
 
         public void BuildBossArenasFor(Transform player)
