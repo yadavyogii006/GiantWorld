@@ -44,10 +44,36 @@ jobs:
           targetPlatform: WebGL
           buildsPath: build
 
-      - name: Decompress WebGL for itch.io (no gzip headers needed)
+      - name: Install brotli (for .unityweb decompression)
+        run: sudo apt-get update && sudo apt-get install -y brotli
+
+      - name: Normalize and decompress WebGL for itch.io
         run: |
           chmod +x scripts/fix-webgl-build.sh
-          ./scripts/fix-webgl-build.sh build/WebGL
+          echo "--- Raw build tree ---"
+          find build -maxdepth 4 -type f | head -40
+
+          if [ -f build/WebGL/WebGL/index.html ]; then
+            WEBGL_ROOT=build/WebGL/WebGL
+          elif [ -f build/WebGL/index.html ]; then
+            WEBGL_ROOT=build/WebGL
+          else
+            WEBGL_ROOT="$(find build -name index.html | head -1 | xargs dirname)"
+          fi
+
+          if [ -z "$WEBGL_ROOT" ] || [ ! -f "$WEBGL_ROOT/index.html" ]; then
+            echo "Could not locate WebGL index.html under build/" >&2
+            exit 1
+          fi
+
+          ./scripts/fix-webgl-build.sh "$WEBGL_ROOT"
+
+          if [ "$WEBGL_ROOT" = "build/WebGL/WebGL" ]; then
+            mv build/WebGL/WebGL /tmp/GiantWorld-WebGL-out
+            rm -rf build/WebGL
+            mv /tmp/GiantWorld-WebGL-out build/WebGL
+          fi
+
           echo "--- Build files after decompress ---"
           ls -la build/WebGL/Build/
           grep -E "dataUrl|frameworkUrl|codeUrl" build/WebGL/index.html
