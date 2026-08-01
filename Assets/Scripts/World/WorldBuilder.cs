@@ -44,19 +44,7 @@ namespace GiantWorld.World
             metalMat = CreateMaterial(new Color(0.7f, 0.72f, 0.75f));
         }
 
-        public static Material CreateMaterial(Color color)
-        {
-            // WebGL/itch.io: prefer built-in shaders that always exist in player builds
-            Shader shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Mobile/Diffuse");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) shader = Shader.Find("Legacy Shaders/Diffuse");
-
-            var mat = new Material(shader);
-            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
-            else mat.color = color;
-            return mat;
-        }
+        public static Material CreateMaterial(Color color) => MaterialCache.Get(color);
 
         void BuildFloor()
         {

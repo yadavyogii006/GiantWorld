@@ -1,39 +1,74 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
-#if ENABLE_INPUT_SYSTEM && !UNITY_WEBGL
-using UnityEngine.InputSystem.UI;
-#endif
 
 namespace GiantWorld.Core
 {
-    /// <summary>
-    /// Bootstraps the entire game at runtime — world, player, camera, UI, lighting.
-    /// Attach to an empty GameObject in the Main scene and press Play.
-    /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
         void Awake()
         {
+            // Camera + blue clear color must exist before anything else (WebGL black-screen guard).
+            WebGLDebugUI.Status = "Booting Giant World...";
+            AutoStart.EnsureFallbackCameraPublic();
+            ForceWebGLCameraSettings();
+        }
+
+        void Start()
+        {
+            StartCoroutine(BootRoutine());
+        }
+
+        static void ForceWebGLCameraSettings()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.45f, 0.62f, 0.92f);
+            cam.allowHDR = false;
+            cam.allowMSAA = false;
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 500f;
+        }
+
+        IEnumerator BootRoutine()
+        {
+            yield return null;
+
             try
             {
                 EnsureGameManager();
                 EnsureEventSystem();
+
+                WebGLDebugUI.Status = "Creating player...";
+                yield return null;
+
                 var player = CreatePlayer();
-                var camera = CreateCamera(player.transform);
+                var camera = SetupCamera(player.transform);
+
+                WebGLDebugUI.Status = "Building kitchen world...";
+                yield return null;
+
                 var canvas = CreateCanvas();
                 var world = CreateWorld(player.transform);
                 var ui = SetupUI(canvas, player);
                 SetupLighting();
                 SetupBossTracking(world, ui);
 
-                Debug.Log("[Giant World] Kitchen loaded. You are insect-sized. Survive 4 bosses!");
+                WebGLDebugUI.Status = "Ready! WASD to move. Click game to focus.";
+                Debug.Log("[Giant World] Kitchen loaded.");
+                Invoke(nameof(HideDebugOverlay), 4f);
             }
             catch (System.Exception ex)
             {
+                WebGLDebugUI.Status = "Error: " + ex.Message;
                 Debug.LogError("[Giant World] Bootstrap failed: " + ex);
-                CreateFallbackCamera();
+                AutoStart.EnsureFallbackCameraPublic();
+                ForceWebGLCameraSettings();
             }
         }
+
+        void HideDebugOverlay() => WebGLDebugUI.Hide();
 
         void Update()
         {
@@ -43,8 +78,7 @@ namespace GiantWorld.Core
         void EnsureGameManager()
         {
             if (GameManager.Instance != null) return;
-            var go = new GameObject("GameManager");
-            go.AddComponent<GameManager>();
+            new GameObject("GameManager").AddComponent<GameManager>();
         }
 
         void EnsureEventSystem()
@@ -52,18 +86,7 @@ namespace GiantWorld.Core
             if (FindObjectOfType<EventSystem>() != null) return;
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
-            // StandaloneInputModule is reliable on WebGL/itch.io
             es.AddComponent<StandaloneInputModule>();
-        }
-
-        void CreateFallbackCamera()
-        {
-            if (Camera.main != null) return;
-            var camGo = new GameObject("Fallback Camera");
-            camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.15f, 0.2f, 0.35f);
         }
 
         GameObject CreatePlayer()
@@ -82,50 +105,49 @@ namespace GiantWorld.Core
             go.AddComponent<Player.PlayerController>();
             go.AddComponent<Player.PlayerCombat>();
 
-            // Visual — insect body
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "BodyVisual";
             body.transform.SetParent(go.transform);
             body.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
             body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            body.GetComponent<Renderer>().material = World.WorldBuilder.CreateMaterial(new Color(0.2f, 0.8f, 0.3f));
+            body.GetComponent<Renderer>().sharedMaterial = MaterialCache.Get(new Color(0.2f, 0.8f, 0.3f));
             Destroy(body.GetComponent<Collider>());
-
-            var antennaL = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            antennaL.transform.SetParent(go.transform);
-            antennaL.transform.localScale = new Vector3(0.05f, 0.4f, 0.05f);
-            antennaL.transform.localPosition = new Vector3(-0.15f, 1.6f, 0.1f);
-            antennaL.transform.localRotation = Quaternion.Euler(20f, 0f, -15f);
-            antennaL.GetComponent<Renderer>().material = World.WorldBuilder.CreateMaterial(Color.black);
-            Destroy(antennaL.GetComponent<Collider>());
-
-            var antennaR = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            antennaR.transform.SetParent(go.transform);
-            antennaR.transform.localScale = new Vector3(0.05f, 0.4f, 0.05f);
-            antennaR.transform.localPosition = new Vector3(0.15f, 1.6f, 0.1f);
-            antennaR.transform.localRotation = Quaternion.Euler(20f, 0f, 15f);
-            antennaR.GetComponent<Renderer>().material = World.WorldBuilder.CreateMaterial(Color.black);
-            Destroy(antennaR.GetComponent<Collider>());
 
             return go;
         }
 
-        Camera CreateCamera(Transform player)
+        Camera SetupCamera(Transform player)
         {
-            var camGo = new GameObject("Main Camera");
-            camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
+            Camera cam = Camera.main;
+            GameObject camGo;
+
+            if (cam == null)
+            {
+                camGo = new GameObject("Main Camera");
+                camGo.tag = "MainCamera";
+                cam = camGo.AddComponent<Camera>();
+                camGo.AddComponent<AudioListener>();
+            }
+            else
+            {
+                camGo = cam.gameObject;
+            }
+
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 500f;
             cam.fieldOfView = 60f;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.55f, 0.65f, 0.85f);
+            cam.allowHDR = false;
+            cam.allowMSAA = false;
 
-            camGo.AddComponent<AudioListener>();
-            var follow = camGo.AddComponent<Player.FollowCamera>();
-            follow.SetTarget(player);
+            if (camGo.GetComponent<Player.FollowCamera>() == null)
+            {
+                var follow = camGo.AddComponent<Player.FollowCamera>();
+                follow.SetTarget(player);
+            }
+
             Bosses.CameraShake.RegisterCamera(camGo.transform);
-
             return cam;
         }
 
@@ -134,8 +156,9 @@ namespace GiantWorld.Core
             var canvasGo = new GameObject("Canvas");
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>().uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            canvasGo.GetComponent<UnityEngine.UI.CanvasScaler>().referenceResolution = new Vector2(1920, 1080);
+            var scaler = canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
             canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             return canvas;
         }
@@ -151,33 +174,48 @@ namespace GiantWorld.Core
 
         UI.UIManager SetupUI(Canvas canvas, GameObject player)
         {
-            var uiGo = new GameObject("UIManager");
-            var ui = uiGo.AddComponent<UI.UIManager>();
-            var health = player.GetComponent<Player.PlayerHealth>();
-            ui.BindPlayer(health);
-            ui.BuildUI(canvas, health);
-            return ui;
+            try
+            {
+                var uiGo = new GameObject("UIManager");
+                var ui = uiGo.AddComponent<UI.UIManager>();
+                var health = player.GetComponent<Player.PlayerHealth>();
+                ui.BindPlayer(health);
+                ui.BuildUI(canvas, health);
+                return ui;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("[Giant World] UI setup skipped: " + ex.Message);
+                WebGLDebugUI.Status = "World loaded (UI skipped). WASD to move.";
+                return null;
+            }
         }
 
         void SetupLighting()
         {
-            var existing = FindObjectOfType<Light>();
-            if (existing != null && existing.type == LightType.Directional) return;
+            foreach (var light in FindObjectsOfType<Light>())
+            {
+                light.shadows = LightShadows.None;
+            }
 
-            var lightGo = new GameObject("Sun");
-            var light = lightGo.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 1.2f;
-            light.color = new Color(1f, 0.95f, 0.85f);
-            light.shadows = LightShadows.None; // Soft shadows can fail on some WebGL GPUs
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            if (FindObjectOfType<Light>() == null)
+            {
+                var lightGo = new GameObject("Sun");
+                var light = lightGo.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.intensity = 1.2f;
+                light.color = new Color(1f, 0.95f, 0.85f);
+                light.shadows = LightShadows.None;
+                lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.65f, 0.65f, 0.7f);
+            RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.78f);
         }
 
         void SetupBossTracking(World.WorldBuilder world, UI.UIManager ui)
         {
+            if (ui == null) return;
             var gm = GameManager.Instance;
             if (gm == null) return;
 

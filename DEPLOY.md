@@ -295,6 +295,49 @@ Or edit `ProjectSettings/ProjectSettings.asset` — rebuild in Actions.
   git push
   ```
 
+### Black screen after gzip fix (game loads but canvas stays dark)
+
+Your downloaded build is probably **out of date**. The last pushed GitHub build used **Linear color space** and runtime `Shader.Find()` — both commonly cause a black WebGL canvas.
+
+**Fix:** push the latest code and rebuild:
+
+```bash
+cd /Users/yogeshyadav/Interviews/Unity/GiantWorld
+git add -A
+git commit -m "Fix WebGL black screen: gamma, shaders, debug overlay"
+git push
+```
+
+Then on GitHub: **Actions → Build WebGL → Run workflow**.
+
+After download, confirm the new build:
+- `Build/` has **no `.gz` files** (only `WebGL.data`, `WebGL.framework.js`, `WebGL.wasm`)
+- `index.html` shows `productVersion: "1.1"` or newer
+- Opening the game shows white status text top-left ("Booting Giant World...") before the kitchen appears
+
+### "Unable to parse WebGL.framework.js.gz" / gzip error
+
+Unity built with **gzip compression** but itch.io and `python3 -m http.server` do **not** send `Content-Encoding: gzip`, so the loader fails.
+
+**Fix your current build locally:**
+
+```bash
+./scripts/fix-webgl-build.sh ~/Desktop/Games/WebGL
+cd ~/Desktop/Games/WebGL
+python3 -m http.server 8080
+# open http://localhost:8080
+```
+
+This decompresses `Build/*.gz` and patches `index.html` to use `WebGL.data`, `WebGL.framework.js`, `WebGL.wasm`.
+
+**Future CI builds:** the GitHub workflow runs the same fix automatically after each WebGL build.
+
+**Quick test without decompressing** (keeps `.gz` files):
+
+```bash
+python3 scripts/serve-webgl.py 8080   # run from folder with index.html
+```
+
 ### Wrong Unity version error
 
 - Workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.txt`)

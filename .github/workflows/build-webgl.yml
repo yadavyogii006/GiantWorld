@@ -44,6 +44,14 @@ jobs:
           targetPlatform: WebGL
           buildsPath: build
 
+      - name: Decompress WebGL for itch.io (no gzip headers needed)
+        run: |
+          chmod +x scripts/fix-webgl-build.sh
+          ./scripts/fix-webgl-build.sh build/WebGL
+          echo "--- Build files after decompress ---"
+          ls -la build/WebGL/Build/
+          grep -E "dataUrl|frameworkUrl|codeUrl" build/WebGL/index.html
+
       - name: Zip for itch.io
         run: |
           cd build/WebGL
