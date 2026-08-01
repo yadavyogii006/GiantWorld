@@ -13,7 +13,7 @@ namespace GiantWorld.World
         static Material floorMat, mugMat, bookMat, tableMat, wallMat, metalMat;
 
         public Transform WorldRoot { get; private set; }
-        public Vector3 PlayerSpawn => new Vector3(-20f, 0.5f, -15f);
+        public Vector3 PlayerSpawn => new Vector3(-20f, 1f, -15f);
 
         public Bosses.CatBoss CatBoss { get; private set; }
         public Bosses.VacuumBoss VacuumBoss { get; private set; }
@@ -22,12 +22,11 @@ namespace GiantWorld.World
 
         public void BuildAll(Transform player)
         {
-            // Synchronous path (Editor). WebGL uses BuildAllRoutine via GameBootstrap.
-            var routine = BuildAllRoutine(player);
+            var routine = BuildAllWithBossesRoutine(player);
             while (routine.MoveNext()) { }
         }
 
-        public IEnumerator BuildAllRoutine(Transform player)
+        public IEnumerator BuildEnvironmentRoutine()
         {
             WorldRoot = new GameObject("KitchenWorld").transform;
             InitMaterials();
@@ -51,8 +50,18 @@ namespace GiantWorld.World
 
             BuildCollectibles();
             yield return null;
+        }
 
+        public void BuildBossArenasFor(Transform player)
+        {
+            if (player == null) return;
             BuildBossArenas(player);
+        }
+
+        public IEnumerator BuildAllWithBossesRoutine(Transform player)
+        {
+            yield return BuildEnvironmentRoutine();
+            BuildBossArenasFor(player);
         }
 
         void InitMaterials()

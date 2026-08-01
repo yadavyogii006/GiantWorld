@@ -32,6 +32,12 @@ namespace GiantWorld.Player
             cameraTransform = cam;
         }
 
+        public void ResetMotion()
+        {
+            velocity = Vector3.zero;
+            coyoteTime = 0f;
+        }
+
         void Update()
         {
             if (attackLockTimer > 0f)

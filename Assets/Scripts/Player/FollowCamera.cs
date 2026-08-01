@@ -24,6 +24,15 @@ namespace GiantWorld.Player
             }
         }
 
+        public void SnapToTarget()
+        {
+            if (target == null) return;
+            Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+            transform.position = target.position + rot * offset;
+            Vector3 lookTarget = target.position + Vector3.up * 1.2f;
+            transform.rotation = Quaternion.LookRotation(lookTarget - transform.position);
+        }
+
         void LateUpdate()
         {
             if (target == null) return;

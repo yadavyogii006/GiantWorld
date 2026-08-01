@@ -51,21 +51,6 @@ namespace GiantWorld.Core
             WebGLDebugUI.Status = "Creating player...";
             yield return null;
 
-            GameObject player;
-            try
-            {
-                player = CreatePlayer();
-                SetupCamera(player.transform);
-            }
-            catch (System.Exception ex)
-            {
-                FailBoot(ex);
-                yield break;
-            }
-
-            WebGLDebugUI.Status = "Building kitchen world...";
-            yield return null;
-
             World.WorldBuilder world = null;
             Canvas canvas = null;
             try
@@ -80,8 +65,33 @@ namespace GiantWorld.Core
                 yield break;
             }
 
-            yield return world.BuildAllRoutine(player.transform);
-            player.transform.position = world.PlayerSpawn;
+            WebGLDebugUI.Status = "Building kitchen world...";
+            yield return world.BuildEnvironmentRoutine();
+
+            GameObject player;
+            try
+            {
+                player = CreatePlayer();
+                player.transform.position = world.PlayerSpawn;
+                world.BuildBossArenasFor(player.transform);
+
+                var cc = player.GetComponent<CharacterController>();
+                cc.enabled = false;
+                player.transform.position = world.PlayerSpawn;
+                cc.enabled = true;
+
+                var pc = player.GetComponent<Player.PlayerController>();
+                pc.ResetMotion();
+
+                SetupCamera(player.transform);
+                var follow = Camera.main?.GetComponent<Player.FollowCamera>();
+                follow?.SnapToTarget();
+            }
+            catch (System.Exception ex)
+            {
+                FailBoot(ex);
+                yield break;
+            }
 
             try
             {
@@ -89,9 +99,9 @@ namespace GiantWorld.Core
                 SetupLighting();
                 SetupBossTracking(world, ui);
 
-                WebGLDebugUI.Status = "Ready! WASD to move. Click game to focus.";
+                WebGLDebugUI.Status = "Ready! Click game, then WASD to move.";
                 Debug.Log("[Giant World] Kitchen loaded.");
-                Invoke(nameof(HideDebugOverlay), 4f);
+                Invoke(nameof(HideDebugOverlay), 8f);
             }
             catch (System.Exception ex)
             {
