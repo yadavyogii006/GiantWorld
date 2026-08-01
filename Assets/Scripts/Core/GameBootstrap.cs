@@ -49,19 +49,34 @@ namespace GiantWorld.Core
             EnsureEventSystem();
             SetupLighting();
 
-            World.WorldBuilder world;
-            Canvas canvas;
-            GameObject player;
+            if (!TrySetupCore(out World.WorldBuilder world, out GameObject player))
+                yield break;
+
+            yield return null;
+
+            yield return world.BuildLandmarksRoutine();
+
+            WebGLDebugUI.Status = "Loading bosses...";
+            yield return world.BuildBossArenasRoutine(player.transform);
+
+            WebGLDebugUI.Status = "Kitchen loaded! WASD move, Shift sprint, Space jump.";
+            Debug.Log("[Giant World] Kitchen loaded.");
+            Invoke(nameof(HideDebugOverlay), 10f);
+        }
+
+        bool TrySetupCore(out World.WorldBuilder world, out GameObject player)
+        {
+            world = null;
+            player = null;
 
             try
             {
-                canvas = CreateCanvas();
+                var canvas = CreateCanvas();
                 var wbGo = new GameObject("WorldBuilder");
                 world = wbGo.AddComponent<World.WorldBuilder>();
 
                 WebGLDebugUI.Status = "Creating floor...";
                 world.BeginWorld();
-                yield return null;
 
                 WebGLDebugUI.Status = "Spawning player...";
                 player = CreatePlayer();
@@ -72,21 +87,13 @@ namespace GiantWorld.Core
                 SetupBossTracking(world, ui);
 
                 WebGLDebugUI.Status = "READY — click game, then WASD to move!";
+                return true;
             }
             catch (System.Exception ex)
             {
                 FailBoot(ex);
-                yield break;
+                return false;
             }
-
-            yield return world.BuildLandmarksRoutine();
-
-            WebGLDebugUI.Status = "Loading bosses...";
-            yield return world.BuildBossArenasRoutine(player.transform);
-
-            WebGLDebugUI.Status = "Kitchen loaded! WASD move, Shift sprint, Space jump.";
-            Debug.Log("[Giant World] Kitchen loaded.");
-            Invoke(nameof(HideDebugOverlay), 10f);
         }
 
         static void PlacePlayer(Transform player, Vector3 spawn)
